@@ -1,3 +1,5 @@
+# vim: fileencoding=utf-8:ft=zsh:foldmethod=marker
+
 #
 # Executes commands at the start of an interactive session.
 #
@@ -11,3 +13,255 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
 fi
 
 # Customize to your needs...
+
+export ZSH_TMUX_ITERM2=true
+export HIST_FIND_NO_DUPS=true
+
+#??? ZSH_TMUX_AUTOSTART='true'
+
+# {{{1 PATH
+#export JAVA_HOME=$(/usr/libexec/java_home -v 1.8)
+#export ANDROID_HOME="$HOME/Library/Android/sdk"
+#export PATH=$JAVA_HOME/bin:$PATH
+export PATH=$PATH:$HOME/Library/Android/sdk/tools:$HOME/Library/Android/sdk/platform-tools
+export GEM_HOME=$HOME/.gem
+export PATH=$GEM_HOME/bin:$PATH
+export PATH="$HOME/.yarn/bin:$HOME/.config/yarn/global/node_modules/.bin:$PATH"
+
+# {{{1 NVM
+export NVM_LAZY_LOAD=true
+export NVM_NO_USE=true
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+
+# {{{1 FZF
+export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden --follow \
+  --glob "!.git/*" \
+  --glob "!node_modules"'
+export FZF_DEFAULT_OPTS="--inline-info --border --reverse \
+  --bind=ctrl-f:page-down \
+  --bind=ctrl-b:page-up"
+
+if [[ $- == *i* ]]; then
+
+# {{{2 prefer tmux command
+__fzf_use_tmux__() {
+  [ -n "$TMUX_PANE" ] && [ "${FZF_TMUX:-0}" != 0 ] && [ ${LINES:-40} -gt 15 ]
+}
+
+__fzfcmd() {
+  __fzf_use_tmux__ &&
+    echo "fzf-tmux -d${FZF_TMUX_HEIGHT:-40%}" || echo "fzf"
+}
+
+# {{{2 command history
+# CTRL-R - Paste the selected command from history into the command line
+fzf-history-widget() {
+  local selected num
+  setopt localoptions noglobsubst noposixbuiltins pipefail 2> /dev/null
+  selected=( $(fc -rl 1 | awk '!x[substr($0, match($0, /[0-9] /)+3)]++' |
+    FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} $FZF_DEFAULT_OPTS -n2..,.. --tiebreak=index \
+      --bind=ctrl-r:toggle-sort $FZF_CTRL_R_OPTS \
+      --query=\'${(qqq)LBUFFER} \
+      --header='Recent Commands' \
+      +m" $(__fzfcmd)) )
+  local ret=$?
+  if [ -n "$selected" ]; then
+    num=$selected[1]
+    if [ -n "$num" ]; then
+      zle vi-fetch-history -n $num
+    fi
+  fi
+  zle redisplay
+  typeset -f zle-line-init >/dev/null && zle zle-line-init
+  return $ret
+}
+zle     -N   fzf-history-widget
+bindkey -M viins '^R' fzf-history-widget
+
+# {{{2 recent directories
+setopt AUTO_PUSHD
+DIRSTACKSIZE=9
+DIRSTACKFILE=~/.zdirs
+if [[ -f $DIRSTACKFILE ]] && [[ $#dirstack -eq 0 ]]; then
+  dirstack=( ${(f)"$(< $DIRSTACKFILE)"} )
+  [[ -d $dirstack[1] ]] && cd $dirstack[1] && cd $OLDPWD
+fi
+chpwd() {
+  print -l $PWD ${(u)dirstack} >! $DIRSTACKFILE
+}
+go-to-directory() {
+  cd `cat $DIRSTACKFILE | fzf --header 'Recent Directories'`
+  zle redisplay
+  zle fzf-redraw-prompt
+  typeset -f zle-line-init >/dev/null && zle zle-line-init
+}
+zle -N go-to-directory
+bindkey -M viins '^O' go-to-directory
+
+# {{{2 paste selected file path(s) into the command line
+__fsel() {
+  local cmd="${FZF_CTRL_T_COMMAND:-"command find -L . -mindepth 1 \\( -path '*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' -o -fstype 'proc' \\) -prune \
+    -o -type f -print \
+    -o -type d -print \
+    -o -type l -print 2> /dev/null | cut -b3-"}"
+  setopt localoptions pipefail 2> /dev/null
+  eval "$cmd" | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_CTRL_T_OPTS" $(__fzfcmd) -m "$@" | while read item; do
+    echo -n "${(q)item} "
+  done
+  local ret=$?
+  echo
+  return $ret
+}
+
+fzf-file-widget() {
+  LBUFFER="${LBUFFER}$(__fsel)"
+  local ret=$?
+  zle redisplay
+  typeset -f zle-line-init >/dev/null && zle zle-line-init
+  return $ret
+}
+zle     -N   fzf-file-widget
+bindkey -M viins '^T' fzf-file-widget
+
+# {{{2 go to a subdirectory
+# Ensure precmds are run after cd
+fzf-redraw-prompt() {
+  local precmd
+  for precmd in $precmd_functions; do
+    $precmd
+  done
+  zle reset-prompt
+}
+zle -N fzf-redraw-prompt
+
+fzf-cd-widget() {
+  local cmd="${FZF_ALT_C_COMMAND:-"command find -L . -mindepth 1 \\( -path '*/\\.*' -o -fstype 'sysfs' -o -fstype 'devfs' -o -fstype 'devtmpfs' -o -fstype 'proc' \\) -prune \
+    -o -type d -print 2> /dev/null | cut -b3-"}"
+  setopt localoptions pipefail 2> /dev/null
+  local dir="$(eval "$cmd" | FZF_DEFAULT_OPTS="--height ${FZF_TMUX_HEIGHT:-40%} --reverse $FZF_DEFAULT_OPTS $FZF_ALT_C_OPTS" $(__fzfcmd) +m)"
+  if [[ -z "$dir" ]]; then
+    zle redisplay
+    return 0
+  fi
+  cd "$dir"
+  local ret=$?
+  zle fzf-redraw-prompt
+  typeset -f zle-line-init >/dev/null && zle zle-line-init
+  return $ret
+}
+zle     -N    fzf-cd-widget
+bindkey -M viins '^F' fzf-cd-widget
+
+#}}}
+
+fi
+
+# {{{1 vi
+if command -v nvim > /dev/null 2>&1; then
+  export EDITOR='nvim'
+fi
+foreground-vi() {
+  fg %vi
+}
+zle -N foreground-vi
+bindkey -M viins '^Z' foreground-vi
+
+# {{{1 less
+if command -v less > /dev/null 2>&1; then
+  export PAGER="less -FM"
+fi
+
+# {{{1 git
+function g() {
+    git $@
+}
+
+# {{{1 OPAM
+. $HOME/.opam/opam-init/init.zsh > /dev/null 2> /dev/null || true
+
+# {{{1 aliases and cdpath
+cdpath=~/sapho
+alias fe=sapho-server-fe
+alias be=sapho-server-be
+alias n=node_modules
+
+# {{{1 'v' command: open nvim in the right split or move there
+vi() {
+    nvim $@
+}
+
+v() {
+    if [ -z "$TMUX" ]; then
+        echo "not in tmux"
+    else
+        PANE=`get_vim_pane`
+
+        if [ -z "$PANE" ]; then
+            CMD='nvim'
+            if [ -f esy.lock ]; then CMD='esy nvim'; fi
+
+            #
+            tmux split-window -h -c `pwd` $CMD
+            while [ -z "$PANE" ]; do
+                PANE=`get_vim_pane`
+            done
+            NEW="yes"
+        else
+            NEW=""
+        fi
+        tmux select-pane -t:.$PANE
+
+        if [ -n "$1" ]; then
+            if [ -n "$NEW" ]; then
+                CMD=":e"
+            else
+                CMD=":sp"
+            fi
+            tmux send-keys -t:.$PANE Escape Escape "$CMD $(realpath $1)" Enter
+        fi
+    fi
+}
+
+get_vim_pane() {
+    tmux list-panes -F "#{pane_index} #{pane_current_command}" \
+          | grep "nvim\|bash\|esyCommand" \
+          | awk '{print $1}'
+}
+
+# {{{1 key bindings
+bindkey -v                   # vi mode
+export KEYTIMEOUT=1          # next key wait time for sequences, in 1/100 second
+
+bindkey -M vicmd 'k' history-substring-search-up
+bindkey -M vicmd 'j' history-substring-search-down
+
+bindkey -M viins '^Q' push-line-or-edit
+bindkey -M viins '^N' vi-forward-char # use suggested line
+bindkey -M viins '^K' vi-kill-eol
+
+# {{{1 vi cursor shape
+# see http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+set-cursor-shape() {
+  case $KEYMAP in
+      vicmd)      print -n '\033[1 q';; # block cursor
+      viins|main) print -n '\033[5 q';; # line cursor
+  esac
+}
+function zle-line-init zle-keymap-select
+{
+  set-cursor-shape
+}
+
+zle -N zle-line-init
+zle -N zle-keymap-select
+
+# {{{1 zsh man pages
+zman() {
+  PAGER="less -g -s '+/^       "$1"'" man zshall
+}
+
+# }}}
+
