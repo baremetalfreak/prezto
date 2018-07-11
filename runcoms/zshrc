@@ -242,21 +242,7 @@ bindkey -M viins '^Q' push-line-or-edit
 bindkey -M viins '^N' vi-forward-char # use suggested line
 bindkey -M viins '^K' vi-kill-eol
 
-# {{{1 vi cursor shape
-# see http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
-set-cursor-shape() {
-  case $KEYMAP in
-      vicmd)      print -n '\033[1 q';; # block cursor
-      viins|main) print -n '\033[5 q';; # line cursor
-  esac
 }
-function zle-line-init zle-keymap-select
-{
-  set-cursor-shape
-}
-
-zle -N zle-line-init
-zle -N zle-keymap-select
 
 # {{{1 zsh man pages
 zman() {

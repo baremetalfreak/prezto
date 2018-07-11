@@ -1,3 +1,4 @@
+# vim: fileencoding=utf-8:ft=zsh:foldmethod=marker
 #
 # A simple theme that displays relevant, contextual information.
 #
@@ -28,6 +29,20 @@
 # 14 bright cyan
 # 15 bright white
 #
+
+# {{{ change vi cursor shape based on current keymap
+# see http://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+set-cursor-shape() {
+  case $KEYMAP in
+      vicmd)      print -n '\033[1 q';; # block cursor
+      viins|main) print -n '\033[5 q';; # line cursor
+  esac
+}
+
+function zle-line-init zle-keymap-select {
+  set-cursor-shape
+}
+# }}}
 
 # Load dependencies.
 pmodload 'helper'
@@ -165,6 +180,10 @@ function prompt_sorin_setup {
   RPROMPT+=${show_return}
   RPROMPT+='%f)${VIM:+" %B%F{6}V%f%b"}${_prompt_sorin_git}'
   SPROMPT='zsh: correct %F{1}%R%f to %F{2}%r%f [nyae]? '
+
+  # create widgets for changing cursor shape
+  zle -N zle-line-init
+  zle -N zle-keymap-select
 }
 
 function prompt_sorin_preview {
