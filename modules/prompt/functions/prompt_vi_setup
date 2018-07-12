@@ -178,7 +178,7 @@ function prompt_sorin_setup {
   PROMPT=''
   PROMPT+='${_prompt_sorin_git}'
   PROMPT+='${_prompt_sorin_pwd} '
-  PROMPT+='${?/#%0/} '
+  PROMPT+='${?/#%0/ } '
 
   SPROMPT='zsh: correct %F{1}%R%f to %F{2}%r%f [nyae]? '
 
