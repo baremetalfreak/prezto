@@ -249,6 +249,12 @@ git-gui () {
 zle -N git-gui
 bindkey -M viins '^G' git-gui
 
+# {{{1 set title
+chpwd() {
+  print -Pn "\033]0;%~\007"
+}
+chpwd # call it once because no directory change is happening at shell start
+
 # {{{1 zsh man pages
 zman() {
   PAGER="less -g -s '+/^       "$1"'" man zshall
