@@ -250,6 +250,15 @@ git-gui () {
 }
 zle -N git-gui
 bindkey -M viins '^G' git-gui
+# {{{2 git status
+git-status () {
+  zle clear-screen
+  print
+  git status
+  zle redisplay
+}
+zle -N git-status
+bindkey -M viins '^Y' git-status
 
 # {{{1 set title
 chpwd() {
