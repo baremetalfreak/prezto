@@ -242,6 +242,8 @@ bindkey -M viins '^Q' push-line-or-edit
 bindkey -M viins '^N' vi-forward-char # use suggested line
 bindkey -M viins '^K' vi-kill-eol
 
+bindkey -M viins '^j' self-insert-unmeta # continue typing on next line
+
 # {{{2 git gui
 git-gui () {
   git gui
