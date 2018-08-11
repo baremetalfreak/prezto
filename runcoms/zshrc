@@ -188,6 +188,10 @@ alias be=sapho-server-be
 alias n=node_modules
 
 # {{{1 'v' command: open nvim in the right split or move there
+vim() {
+    nvim $@
+}
+
 vi() {
     nvim $@
 }
