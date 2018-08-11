@@ -15,8 +15,6 @@ fi
 # Customize to your needs...
 
 export ZSH_TMUX_ITERM2=true
-export HIST_FIND_NO_DUPS=true
-
 #??? ZSH_TMUX_AUTOSTART='true'
 
 # {{{1 PATH
@@ -57,6 +55,8 @@ __fzfcmd() {
 }
 
 # {{{2 command history
+export HIST_FIND_NO_DUPS=true
+
 # CTRL-R - Paste the selected command from history into the command line
 fzf-history-widget() {
   local selected num
