@@ -250,6 +250,7 @@ bindkey -M viins '^j' self-insert-unmeta # continue typing on next line
 # {{{2 git gui
 git-gui () {
   git gui 2>&1 > /dev/null &
+  zle reset-prompt
 }
 zle -N git-gui
 bindkey -M viins '^G' git-gui
