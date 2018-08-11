@@ -171,7 +171,7 @@ bindkey -M viins '^Z' foreground-vi
 
 # {{{1 less
 if command -v less > /dev/null 2>&1; then
-  export PAGER="less -FM"
+  export PAGER="less -Mi"
 fi
 
 # {{{1 git
