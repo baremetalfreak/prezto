@@ -277,3 +277,6 @@ zman() {
 
 # }}}
 
+# {{{1 SAPHO
+export GEM_HOME=$HOME/.gem
+export PATH=$GEM_HOME/bin:$PATH
